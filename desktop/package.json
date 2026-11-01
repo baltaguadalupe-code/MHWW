@@ -1,0 +1,31 @@
+{
+  "name": "guia-del-cazador-escritorio",
+  "productName": "Guia del Cazador",
+  "version": "0.1.0",
+  "description": "Guía del Cazador para Windows 11",
+  "author": "baltaguadalupe-code",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64 --publish never"
+  },
+  "build": {
+    "appId": "com.mhww.guiadelcazador",
+    "productName": "Guia del Cazador",
+    "files": ["main.js", "www/**/*"],
+    "directories": { "output": "dist" },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "GuiaDelCazador-${version}-${target}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Guía del Cazador"
+    }
+  }
+}
