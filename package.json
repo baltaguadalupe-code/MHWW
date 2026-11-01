@@ -1,0 +1,16 @@
+{
+  "name": "guia-del-cazador",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Guía del Cazador: preguntas sobre Monster Hunter World, Iceborne y Wilds con explicación, pasos, fuentes y videos comprobados.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/prueba.js",
+    "validar": "node scripts/validar.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
