@@ -1,0 +1,114 @@
+# Compila la Guía del Cazador como APK de Android y como app de Windows 11.
+# Se ejecuta en cada cambio a main, a mano (pestaña Actions → Run workflow)
+# y al crear una etiqueta v* (por ejemplo v0.1.0), que además publica un Release.
+#
+# Opcional: en Settings → Secrets and variables → Actions → Variables,
+# crea la variable SERVER_URL con la dirección pública de tu servidor
+# (ej. https://guia-del-cazador.onrender.com) para que las apps ya la traigan configurada.
+name: Compilar apps
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+    paths:
+      - "public/**"
+      - "desktop/**"
+      - "mobile/**"
+      - ".github/workflows/compilar-apps.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  android:
+    name: APK de Android
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Copiar la app web
+        env:
+          SERVER_URL: ${{ vars.SERVER_URL }}
+        run: |
+          mkdir -p mobile/www
+          cp -r public/* mobile/www/
+          if [ -n "$SERVER_URL" ]; then
+            printf 'window.GUIA_CONFIG = { servidor: "%s" };\n' "$SERVER_URL" > mobile/www/config.js
+          fi
+
+      - name: Crear proyecto Android con Capacitor
+        working-directory: mobile
+        run: |
+          npm init -y > /dev/null
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npx cap add android
+          npx cap sync android
+
+      - name: Compilar APK
+        working-directory: mobile/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../../GuiaDelCazador.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GuiaDelCazador-Android
+          path: GuiaDelCazador.apk
+
+  windows:
+    name: App de Windows 11
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Copiar la app web
+        shell: bash
+        env:
+          SERVER_URL: ${{ vars.SERVER_URL }}
+        run: |
+          mkdir -p desktop/www
+          cp -r public/* desktop/www/
+          if [ -n "$SERVER_URL" ]; then
+            printf 'window.GUIA_CONFIG = { servidor: "%s" };\n' "$SERVER_URL" > desktop/www/config.js
+          fi
+
+      - name: Compilar instalador y versión portátil
+        working-directory: desktop
+        run: |
+          npm install --save-dev electron electron-builder
+          npx electron-builder --win --x64 --publish never
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GuiaDelCazador-Windows
+          path: desktop/dist/*.exe
+
+  release:
+    name: Publicar Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [android, windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: salida
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: salida/*
