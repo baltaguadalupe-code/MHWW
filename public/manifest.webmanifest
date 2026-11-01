@@ -1,0 +1,10 @@
+{
+  "name": "Guía del Cazador",
+  "short_name": "Cazador",
+  "lang": "es",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#14110e",
+  "theme_color": "#14110e",
+  "icons": [{ "src": "icono.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
