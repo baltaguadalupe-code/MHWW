@@ -1,0 +1,18 @@
+# Despliegue del servidor en Render (render.com): New → Blueprint → elige este repositorio.
+services:
+  - type: web
+    name: guia-del-cazador
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /api/estado
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: MODELO
+        value: claude-sonnet-5-5
+      - key: MODELO_RAPIDO
+        value: claude-haiku-5-5
