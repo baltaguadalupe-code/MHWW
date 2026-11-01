@@ -19,13 +19,16 @@
       "target": [
         { "target": "nsis", "arch": ["x64"] },
         { "target": "portable", "arch": ["x64"] }
-      ],
-      "artifactName": "GuiaDelCazador-${version}-${target}.${ext}"
+      ]
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "shortcutName": "Guía del Cazador"
+      "shortcutName": "Guía del Cazador",
+      "artifactName": "GuiaDelCazador-${version}-instalador.${ext}"
+    },
+    "portable": {
+      "artifactName": "GuiaDelCazador-${version}-portable.${ext}"
     }
   }
 }
