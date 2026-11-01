@@ -76,7 +76,7 @@ Cada cambio en `main` compila automáticamente. Para compilar a mano: pestaña *
 
 **Instalar en Android:** abre el APK en el teléfono y permite "instalar apps de origen desconocido". Es una compilación de prueba (debug), no está firmada para Google Play.
 
-**Instalar en Windows 11:** ejecuta `GuiaDelCazador-…-nsis.exe`. Como no está firmada digitalmente, SmartScreen puede avisar: **Más información → Ejecutar de todas formas**. La versión `portable` no requiere instalación.
+**Instalar en Windows 11:** ejecuta `GuiaDelCazador-…-instalador.exe`. Como no está firmada digitalmente, SmartScreen puede avisar: **Más información → Ejecutar de todas formas**. La versión `portable` no requiere instalación.
 
 ## Desarrollo local
 
