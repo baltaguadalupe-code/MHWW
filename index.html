@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MHWW Buscador</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2330;--mut:#667085;--bd:#d9dde5;--ac:#1f6feb;--hl:#fff3b0}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1218;--card:#181c24;--tx:#e6e8ec;--mut:#98a2b3;--bd:#2b313d;--ac:#4c8dff;--hl:#5c4d00}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:20px 16px}
+h1{font-size:22px;margin:0 0 4px}
+p.sub{margin:0 0 16px;color:var(--mut)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+input[type=text],select{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:9px 11px}
+#q{flex:1;min-width:220px;font-size:16px}
+button,label.btn{font:inherit;cursor:pointer;border:1px solid var(--ac);background:var(--ac);color:#fff;border-radius:8px;padding:9px 14px}
+button.sec{background:transparent;color:var(--ac)}
+input[type=file]{display:none}
+#drop{border:2px dashed var(--bd);border-radius:10px;padding:18px;text-align:center;color:var(--mut)}
+#drop.on{border-color:var(--ac);color:var(--ac)}
+#info{color:var(--mut);font-size:14px}
+.wrap{overflow:auto;max-height:65vh;border:1px solid var(--bd);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--bd);text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:var(--card);cursor:pointer}
+mark{background:var(--hl);color:inherit;border-radius:2px}
+.src{color:var(--mut);font-size:12px}
+</style>
+</head>
+<body>
+<main>
+<h1>Buscador de información</h1>
+<p class="sub">Carga uno o varios archivos Excel o CSV y busca en todas sus hojas a la vez. Los archivos no salen de tu computadora.</p>
+
+<div class="card">
+  <div id="drop">Arrastra aquí tus archivos (.xlsx, .xls, .csv) o
+    <label class="btn" for="f">Elegir archivos</label>
+    <input type="file" id="f" multiple accept=".xlsx,.xls,.xlsm,.csv">
+  </div>
+  <p id="info">Sin archivos cargados.</p>
+</div>
+
+<div class="card">
+  <div class="row">
+    <input type="text" id="q" placeholder="Ej.: E68 diésel, proveedor, número de OC, fecha…">
+    <select id="col"><option value="">Todas las columnas</option></select>
+    <select id="mode">
+      <option value="all">Todas las palabras</option>
+      <option value="any">Cualquier palabra</option>
+      <option value="exact">Frase exacta</option>
+    </select>
+    <button class="sec" id="clear">Limpiar</button>
+    <button id="exp">Exportar resultados</button>
+  </div>
+  <p id="count" class="src"></p>
+  <div class="wrap"><table id="t"></table></div>
+</div>
+</main>
+
+<script>
+let rows=[], cols=[], shown=[], sortCol=null, sortAsc=true;
+const $=id=>document.getElementById(id);
+const norm=s=>String(s??"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function fmt(v){
+  if(v instanceof Date&&!isNaN(v)) return v.toLocaleDateString("es-MX");
+  return v??"";
+}
+
+async function load(files){
+  for(const file of files){
+    const buf=await file.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array",cellDates:true});
+    wb.SheetNames.forEach(sn=>{
+      const data=XLSX.utils.sheet_to_json(wb.Sheets[sn],{defval:"",raw:true});
+      data.forEach(r=>{
+        const o={};
+        for(const k in r){ if(!k.startsWith("__EMPTY")||r[k]!=="") o[k]=fmt(r[k]); }
+        o._origen=file.name+" › "+sn;
+        o._txt=norm(Object.values(o).join(" "));
+        rows.push(o);
+        Object.keys(o).forEach(k=>{ if(k[0]!=="_"&&!cols.includes(k)) cols.push(k); });
+      });
+    });
+  }
+  $("col").innerHTML='<option value="">Todas las columnas</option>'+cols.map(c=>`<option>${esc(c)}</option>`).join("");
+  const nf=new Set(rows.map(r=>r._origen.split(" › ")[0])).size;
+  $("info").textContent=`${rows.length.toLocaleString("es-MX")} filas cargadas de ${nf} archivo(s).`;
+  search();
+}
+
+function search(){
+  const q=norm($("q").value.trim()), col=$("col").value, mode=$("mode").value;
+  const words=mode==="exact"?(q?[q]:[]):q.split(/\s+/).filter(Boolean);
+  shown=rows.filter(r=>{
+    if(!words.length) return true;
+    const hay=col?norm(r[col]):r._txt;
+    return mode==="any"?words.some(w=>hay.includes(w)):words.every(w=>hay.includes(w));
+  });
+  if(sortCol){
+    shown.sort((a,b)=>{
+      const x=a[sortCol]??"", y=b[sortCol]??"";
+      const n=(typeof x==="number"&&typeof y==="number")?x-y:String(x).localeCompare(String(y),"es",{numeric:true});
+      return sortAsc?n:-n;
+    });
+  }
+  render(words);
+}
+
+function hl(v,words){
+  let s=esc(v);
+  if(!words.length) return s;
+  const src=norm(s); let out="", i=0;
+  const hits=[];
+  words.forEach(w=>{ let p=src.indexOf(w); while(p>-1&&w){ hits.push([p,p+w.length]); p=src.indexOf(w,p+w.length);} });
+  hits.sort((a,b)=>a[0]-b[0]);
+  hits.forEach(([a,b])=>{ if(a<i) return; out+=s.slice(i,a)+"<mark>"+s.slice(a,b)+"</mark>"; i=b; });
+  return out+s.slice(i);
+}
+
+function render(words){
+  const LIM=500, list=shown.slice(0,LIM);
+  $("count").textContent=rows.length?`${shown.length.toLocaleString("es-MX")} resultado(s)`+(shown.length>LIM?` · mostrando los primeros ${LIM} (exporta para verlos todos)`:""):"";
+  if(!rows.length){ $("t").innerHTML=""; return; }
+  const head="<tr>"+cols.map(c=>`<th data-c="${esc(c)}">${esc(c)}${sortCol===c?(sortAsc?" ▲":" ▼"):""}</th>`).join("")+"<th>Origen</th></tr>";
+  const body=list.map(r=>"<tr>"+cols.map(c=>`<td>${hl(r[c]??"",words)}</td>`).join("")+`<td class="src">${esc(r._origen)}</td></tr>`).join("");
+  $("t").innerHTML="<thead>"+head+"</thead><tbody>"+body+"</tbody>";
+}
+
+function exportar(){
+  if(!shown.length) return alert("No hay resultados para exportar.");
+  const data=shown.map(r=>{ const o={}; cols.forEach(c=>o[c]=r[c]??""); o.Origen=r._origen; return o; });
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(data),"Resultados");
+  XLSX.writeFile(wb,"resultados_busqueda.xlsx");
+}
+
+$("f").addEventListener("change",e=>load(e.target.files));
+const d=$("drop");
+["dragenter","dragover"].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.add("on");}));
+["dragleave","drop"].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.remove("on");}));
+d.addEventListener("drop",e=>load(e.dataTransfer.files));
+let tmr; $("q").addEventListener("input",()=>{clearTimeout(tmr);tmr=setTimeout(search,150);});
+$("col").addEventListener("change",search);
+$("mode").addEventListener("change",search);
+$("clear").addEventListener("click",()=>{$("q").value="";$("col").value="";search();});
+$("exp").addEventListener("click",exportar);
+$("t").addEventListener("click",e=>{
+  const c=e.target.closest("th")?.dataset.c; if(!c) return;
+  sortAsc=sortCol===c?!sortAsc:true; sortCol=c; search();
+});
+</script>
+</body>
+</html>
