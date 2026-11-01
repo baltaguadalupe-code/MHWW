@@ -1,0 +1,8 @@
+{
+  "appId": "com.mhww.guiadelcazador",
+  "appName": "Guía del Cazador",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}
