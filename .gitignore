@@ -1,0 +1,9 @@
+node_modules/
+.env
+dist/
+desktop/www/
+desktop/node_modules/
+mobile/www/
+mobile/android/
+mobile/node_modules/
+mobile/package*.json
